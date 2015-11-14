@@ -48,11 +48,11 @@
  //Initialize
  Weather::Weather(){}
 
- void Weather::begin(void)
+void Weather::begin(void)
 {
   Wire.begin();
 
-  uint8_t ID_Barro = IIC_Read(WHO_AM_I );
+  uint8_t ID_Barro = IIC_Read(WHO_AM_I);
   uint8_t ID_Temp_Hum = checkID();
 
   int x,y = 0;
@@ -76,7 +76,6 @@
   }
   else if(x == 1 && y == 2)
   {
-    Serial1.println("SWEET JESUS");
     Serial1.println("MPL3115A2 Found");
     Serial1.println("HTU21D Found");
   }
@@ -97,6 +96,13 @@
   }
   else
   	Serial1.println("No Devices Detected");
+}
+
+void Weather::end(void)
+{
+  // shut down the I2C bus
+  // bluz cannot I2C and SPI simultaneously
+  Wire.end();
 }
 
 /****************Si7021 & HTU21D Functions**************************************/

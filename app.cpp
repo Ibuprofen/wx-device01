@@ -59,6 +59,9 @@ void getWeather()
 int getAndPublishWeather(String command)
 {
   iterations++;
+
+  initWeather();
+
   Serial1.print("getAndPublishWeather() iteration: ");
   Serial1.println(iterations);
 
@@ -72,7 +75,7 @@ int getAndPublishWeather(String command)
 
   // TODO: still missing sprintf floats
   //sprintf(publishString, "{\"temp\": %.2f, \"hum\": %.2f, \"pa\": %.2f}", tempf, humidity, pascals);
-  sprintf(publishString, "{\"temp\": %d, \"hum\": %d, \"pa\": %d}", (int)(tempf*100), (int)(humidity*100), (int)(pascals*100));  
+  sprintf(publishString, "{\"temp\": %d, \"hum\": %d, \"pa\": %d}", (int)(tempf*100), (int)(humidity*100), (int)(pascals*100));
 
   Serial1.println(3);
 
@@ -89,20 +92,14 @@ int getAndPublishWeather(String command)
 
   Serial1.println(4);
 
+  endWeather();
+
   digitalWrite(D7, LOW);
 
   return 1;
 }
 
-//---------------------------------------------------------------
-void setup()
-{
-  Serial1.begin(9600);
-
-  Serial1.println("Hello World");
-
-  pinMode(D7, OUTPUT);
-
+void initWeather() {
   //Initialize the I2C sensors and ping them
   sensor.begin();
 
@@ -111,6 +108,26 @@ void setup()
   sensor.setOversampleRate(7);
 
   sensor.enableEventFlags();
+}
+
+void endWeather()
+{
+  sensor.end();
+}
+
+void storeWeatherData()
+{
+  Serial1.println('storeWeatherData()');
+}
+
+//---------------------------------------------------------------
+void setup()
+{
+  Serial1.begin(9600);
+
+  Serial1.println("setup()");
+
+  pinMode(D7, OUTPUT);
 
   Particle.function("getWeather", getAndPublishWeather);
 }
@@ -127,9 +144,10 @@ void loop()
     lastSampleTime += sampleInterval;
     // add code to take temperature reading here
     getAndPublishWeather("");
+    storeWeatherData();
   }
 
-  
+
   System.sleep(SLEEP_MODE_DEEP);
 }
 
