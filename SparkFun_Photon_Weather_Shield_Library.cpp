@@ -50,6 +50,8 @@
 
 void Weather::begin(void)
 {
+  Serial1.println("Weather::begin");
+
   Wire.begin();
 
   uint8_t ID_Barro = IIC_Read(WHO_AM_I);
@@ -95,11 +97,12 @@ void Weather::begin(void)
     Serial1.println("No Temp/Humidity Device Detected");
   }
   else
-  	Serial1.println("No Devices Detected");
+    Serial1.println("No Devices Detected");
 }
 
 void Weather::end(void)
 {
+  Serial1.println("Weather::end");
   // shut down the I2C bus
   // bluz cannot I2C and SPI simultaneously
   Wire.end();

@@ -15,6 +15,22 @@ char publishString[64];
 //Create Instance of HTU21D or SI7021 temp and humidity sensor and MPL3115A2 barrometric sensor
 Weather sensor;
 
+void initWeather() {
+  //Initialize the I2C sensors and ping them
+  sensor.begin();
+
+  sensor.setModeBarometer();
+
+  sensor.setOversampleRate(7);
+
+  sensor.enableEventFlags();
+}
+
+void endWeather()
+{
+  sensor.end();
+}
+
 float readBaro() {
   sensor.setModeBarometer();
   return sensor.readBaroTempF();
@@ -27,11 +43,11 @@ float readAltitude() {
 
 // Measure Pressure from the MPL3115A2
 // When device first boots it may take a hundred or so
-// iterations before the value is > 0
+// iterations before the value accurate
 float readPressure() {
   float pa = sensor.readPressure();
-  // try again
-  if (pa == 0.00) {
+  // try again value is incorrect
+  if (pa < 10.00) {
     return readPressure();
   }
   return pa;
@@ -65,19 +81,14 @@ int getAndPublishWeather(String command)
   Serial1.print("getAndPublishWeather() iteration: ");
   Serial1.println(iterations);
 
+  // turn on D7 led while taking measurements
   digitalWrite(D7, HIGH);
 
-  Serial1.println(1);
-
   getWeather();
-
-  Serial1.println(2);
 
   // TODO: still missing sprintf floats
   //sprintf(publishString, "{\"temp\": %.2f, \"hum\": %.2f, \"pa\": %.2f}", tempf, humidity, pascals);
   sprintf(publishString, "{\"temp\": %d, \"hum\": %d, \"pa\": %d}", (int)(tempf*100), (int)(humidity*100), (int)(pascals*100));
-
-  Serial1.println(3);
 
   Serial1.println(publishString);
   Serial1.print("tempf:"); Serial1.println(tempf);
@@ -90,8 +101,6 @@ int getAndPublishWeather(String command)
     Serial1.println("Unable to publish weather, no cloud connection.");
   }
 
-  Serial1.println(4);
-
   endWeather();
 
   digitalWrite(D7, LOW);
@@ -99,25 +108,9 @@ int getAndPublishWeather(String command)
   return 1;
 }
 
-void initWeather() {
-  //Initialize the I2C sensors and ping them
-  sensor.begin();
-
-  sensor.setModeBarometer();
-
-  sensor.setOversampleRate(7);
-
-  sensor.enableEventFlags();
-}
-
-void endWeather()
+void saveWeatherData()
 {
-  sensor.end();
-}
-
-void storeWeatherData()
-{
-  Serial1.println('storeWeatherData()');
+  Serial1.println("saveWeatherData()");
 }
 
 //---------------------------------------------------------------
@@ -144,9 +137,8 @@ void loop()
     lastSampleTime += sampleInterval;
     // add code to take temperature reading here
     getAndPublishWeather("");
-    storeWeatherData();
+    saveWeatherData();
   }
-
 
   System.sleep(SLEEP_MODE_DEEP);
 }

@@ -129,6 +129,7 @@ public:
 	Weather();
 
 	void  begin();
+	void  end();
 
 	// Si7021 & HTU21D Public Functions
 	float getRH();
