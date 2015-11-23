@@ -60,7 +60,8 @@ void sensorBegin() {
 
 void sensorEnd() {
   Serial1.println("sensorEnd Wire.end()"); 
-  sensor.end();
+  //sensor.end();
+  Wire.end();
 }
 
 void getWeather()
