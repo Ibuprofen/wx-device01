@@ -83,9 +83,6 @@ void getWeather()
   //If in altitude mode, you can get a reading in feet  with this line:
   //altf = readAltitude();
   sensorEnd();
-
-  Serial1.println("Delaying 500 ms");
-  HAL_Delay_Milliseconds(500);
 }
 
 void initSD() {
