@@ -108,7 +108,7 @@ struct CID {
   uint16_t always1 : 1;
   uint16_t crc : 7;
 }__attribute__ ((packed));
-typedef struct CID cid_t; 
+typedef struct CID cid_t;
 //------------------------------------------------------------------------------
 // CSD for version 1.00 cards
 struct CSDV1 {

@@ -1,67 +1,114 @@
-/*
-  SD card test
+#include <application.h>
+#include "libs/SparkFun_Photon_Weather_Shield_Library.h"
+#include "libs/SD.h"
 
- This example shows how use the utility libraries on which the'
- SD library is based in order to get info about your SD card.
- Very useful for testing a card when you're not sure whether its working or not.
+float humidity = 0;
+float tempf = 0;
+float pascals = 0;
+float inhg = 0;
+float baroTemp = 0;
+float altf = 0;
 
- The circuit:
-  * SD card attached to SPI bus as follows:
-  Refer to "libraries/SdFat/Sd2Card_config.h"
+int iterations = 0;
 
- created  28 Mar 2011
- by Limor Fried
- modified 16 Mar 2011
- by Tom Igoe
- modified for Maple(STM32 micros)/libmaple
- 17 Mar 2012
- by dinau
- */
- // include the SD library:
+char publishString[64];
 
-#include "application.h"
-#include "SD.h"
+//Create Instance of HTU21D or SI7021 temp and humidity sensor and MPL3115A2 barrometric sensor
+Weather sensor;
 
 // set up variables using the SD utility library functions:
 Sd2Card card;
 SdVolume volume;
 SdFile root;
 
-// SOFTWARE SPI pin configuration - modify as required
-// The default pins are the same as HARDWARE SPI
-const uint8_t chipSelect = A2;    // Also used for HARDWARE SPI setup
+// SPI pins
+const uint8_t chipSelect = A2;
 const uint8_t mosiPin = A5;
 const uint8_t misoPin = A4;
 const uint8_t clockPin = A3;
 
-int ledOn = false;
 
-void setup()
+float readBaro() {
+  sensor.setModeBarometer();
+  return sensor.readBaroTempF();
+}
+
+float readAltitude() {
+  sensor.setModeAltimeter();
+  return sensor.readAltitudeFt();
+}
+
+// Measure Pressure from the MPL3115A2
+// When device first boots it may take a hundred or so
+// iterations before the value is > 0
+float readPressure() {
+  float pa = sensor.readPressure();
+  // try again
+  if (pa == 0.00) {
+    return readPressure();
+  }
+  return pa;
+}
+
+void sensorBegin() {
+  Serial1.println("sensorBegin()");
+  sensor.begin();
+  sensor.setModeBarometer();
+  sensor.setOversampleRate(7);
+  sensor.enableEventFlags();
+}
+
+void sensorEnd() {
+  Serial1.println("sensorEnd Wire.end()"); 
+  sensor.end();
+}
+
+void getWeather()
 {
+  sensorBegin();
 
-  pinMode(D7, OUTPUT);
+  // Measure Relative Humidity from the HTU21D or Si7021
+  humidity = sensor.getRH();
 
-  Serial1.begin(9600);
-  Serial1.println("Serial test");
+  // Measure Temperature from the HTU21D or Si7021
+  tempf = sensor.getTempF();
+  // Temperature is measured every time RH is requested.
+  // It is faster, therefore, to read it from previous RH
+  // measurement with getTemp() instead with readTemp()
+  pascals = readPressure();
 
-  Serial1.print("\nInitializing SD card...");
+  //Measure the Barometer temperature in F from the MPL3115A2
+  //baroTemp = readBaro();
 
-  // we'll use the initialization code from the utility libraries
-  // since we're just testing if the card is working!
-  // Initialize HARDWARE SPI with user defined chipSelect
+  //If in altitude mode, you can get a reading in feet  with this line:
+  //altf = readAltitude();
+  sensorEnd();
+
+  Serial1.println("Delaying 500 ms");
+  HAL_Delay_Milliseconds(500);
+}
+
+void initSD() {
+  Serial1.println("initSD");
+
   if (!card.init(SPI_HALF_SPEED, chipSelect)) {
-
-  // Initialize SOFTWARE SPI (uncomment and comment out above line to use)
-  //  if (!card.init(mosiPin, misoPin, clockPin, chipSelect)) {
     Serial1.println("initialization failed. Things to check:");
     Serial1.println("* is a card is inserted?");
     Serial1.println("* Is your wiring correct?");
     Serial1.println("* did you change the chipSelect pin to match your shield or module?");
     return;
   } else {
-   Serial1.println("Wiring is correct and a card is present.");
+    Serial1.println("Wiring is correct and a card is present.");
   }
+}
 
+void endSD() {
+  Serial1.println("endSD SPI.end()");
+  SPI.end();
+  //card.end();
+}
+
+void infoSD() {
   // print the type of card
   Serial1.print("\nCard type: ");
   switch(card.type()) {
@@ -93,15 +140,8 @@ void setup()
   volumesize = volume.blocksPerCluster();    // clusters are collections of blocks
   volumesize *= volume.clusterCount();       // we'll have a lot of clusters
   volumesize *= 512;                         // SD card blocks are always 512 bytes
-  Serial1.print("Volume size (bytes): ");
-  Serial1.println(volumesize);
-  Serial1.print("Volume size (Kbytes): ");
   volumesize /= 1024;
-  Serial1.println(volumesize);
   Serial1.print("Volume size (Mbytes): ");
-  volumesize /= 1024;
-  Serial1.println(volumesize);
-  Serial1.print("Volume size (Gbytes): ");
   volumesize /= 1024;
   Serial1.println(volumesize);
 
@@ -110,16 +150,78 @@ void setup()
 
   // list all files in the card with date and size
   root.ls(LS_R | LS_DATE | LS_SIZE);
-
-  card.end();
 }
 
-void loop(void) {
-  if (millis() % 1000 == 0 && ledOn) {
-      digitalWrite(D7, LOW);
-      ledOn = !ledOn;
-  } else if (millis() % 1000 == 0) {
-      digitalWrite(D7, HIGH);
-      ledOn = !ledOn;
+
+void saveSample() {
+  Serial1.println("saveSample()");
+
+  initSD();
+  infoSD(); // TODO: save the data
+  endSD();
+
+}
+
+
+int sampleSensor(String command)
+{
+  iterations++;
+  Serial1.print("sampleSensor() iteration: ");
+  Serial1.println(iterations);
+
+  getWeather();
+
+  // TODO: still missing sprintf floats
+  //sprintf(publishString, "{\"temp\": %.2f, \"hum\": %.2f, \"pa\": %.2f}", tempf, humidity, pascals);
+  sprintf(publishString, "{\"temp\": %d, \"hum\": %d, \"pa\": %d}", (int)(tempf*100), (int)(humidity*100), (int)(pascals*100));  
+
+  Serial1.println(publishString);
+  Serial1.print("tempf:"); Serial1.println(tempf);
+  Serial1.print("hum:"); Serial1.println(humidity);
+  Serial1.print("pa:"); Serial1.println(pascals);
+
+  saveSample();
+
+  if (Particle.connected()) {
+    Particle.publish("weather", publishString);
+  } else {
+    Serial1.println("Unable to publish weather, no cloud connection.");
   }
+
+  return 1;
 }
+
+//---------------------------------------------------------------
+void setup()
+{
+  Serial1.begin(9600);
+
+  Serial1.println("Hello World");
+
+  pinMode(D7, OUTPUT);
+
+  Particle.function("getWeather", sampleSensor);
+}
+
+//---------------------------------------------------------------
+void loop()
+{
+  const unsigned long sampleInterval = 1 * 60 * 1000UL;
+  static unsigned long lastSampleTime = 0 - sampleInterval;  // initialize such that a reading is due the first time through loop()
+
+  unsigned long now = millis();
+  if (now - lastSampleTime >= sampleInterval)
+  {
+    lastSampleTime += sampleInterval;
+ 
+    digitalWrite(D7, HIGH);
+
+    sampleSensor("");
+
+    digitalWrite(D7, LOW);
+  }
+
+  System.sleep(SLEEP_MODE_DEEP);
+}
+
+

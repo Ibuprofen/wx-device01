@@ -124,6 +124,8 @@ class Sd2Card {
    */
   //uint8_t init();
 
+  void end();
+
   /**
    * Initialize an SD flash memory card with the selected SPI clock rate
    * and the default SD chip select pin.
@@ -137,9 +139,7 @@ class Sd2Card {
 
   // Software SPI init
   uint8_t init(uint8_t mosiPin, uint8_t misoPin, uint8_t clockPin, uint8_t chipSelectPin);
-
-  void end();
-
+  
   void partialBlockRead(uint8_t value);
   /** Returns the current value, true or false, for partial block read. */
   uint8_t partialBlockRead(void) const {return partialBlockRead_;}

@@ -205,6 +205,12 @@ uint8_t Sd2Card::eraseSingleBlockEnable(void) {
   csd_t csd;
   return readCSD(&csd) ? csd.v1.erase_blk_en : 0;
 }
+
+void Sd2Card::end() {
+  Serial1.println("Sd2Card::end SPI.end()");
+  SPI.end();
+}
+
 //------------------------------------------------------------------------------
 /**
  * Initialize an SD flash memory card.
@@ -218,8 +224,12 @@ uint8_t Sd2Card::eraseSingleBlockEnable(void) {
  */
 uint8_t Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   chipSelectPin_ = chipSelectPin;
+  pinMode(chipSelectPin_, OUTPUT);
+  SPI.begin();
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
+
+  SPImode_ = 1;		// Set hardware SPI mode
 
   if( sckRateID == SPI_FULL_SPEED ){
     SPI.setClockDivider(SPI_CLOCK_DIV4);
@@ -228,16 +238,8 @@ uint8_t Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
     SPI.setClockDivider(SPI_CLOCK_DIV8);
   }
 
-  SPI.begin(chipSelectPin_);
-
-  SPImode_ = 1;		// Set hardware SPI mode
-
   //return init(SD_SPI);
   return init();
-}
-
-void Sd2Card::end() {
-	SPI.end();
 }
 
 uint8_t Sd2Card::init(uint8_t mosiPin, uint8_t misoPin, uint8_t clockPin, uint8_t chipSelectPin) {
@@ -762,8 +764,8 @@ uint8_t Sd2Card::sparkSPISend(uint8_t data) {
 	if (SPImode_) {				// SPI Mode is Hardware so use Spark SPI function
 		b = SPI.transfer(data);
 	}
-	else {
-		Serial1.println('shit, SPI_mode_ = 0, software');
+	else {						// SPI Mode is Software so use bit bang method
+		Serial1.println("No software SPI");
 	}
 	return b;
 }
